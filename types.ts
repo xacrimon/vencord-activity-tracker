@@ -26,6 +26,8 @@ export interface ProfileChanges {
     after: ProfileSnapshot;
 }
 
+export type VoiceAction = "join" | "leave" | "move";
+
 export interface PresenceLogEntry {
     userId: string;
     username: string;
@@ -38,14 +40,23 @@ export interface PresenceLogEntry {
     activitySummary?: string;
     clientStatusSummary?: string;
     guildName?: string | null;
-    type?: "presence" | "profile" | "message" | "typing";
+    type?: "presence" | "profile" | "message" | "typing" | "voice";
     profileChanges?: ProfileChanges;
     offlineDuration?: number;
     onlineDuration?: number;
     activities?: any[];
     channelId?: string;
+    channelName?: string;
     messageContent?: string;
     messageId?: string;
+    voiceAction?: VoiceAction;
+    voiceChannelId?: string | null;
+    voiceChannelName?: string | null;
+    voiceOldChannelId?: string | null;
+    voiceOldChannelName?: string | null;
+    voiceOldGuildId?: string | null;
+    voiceOldGuildName?: string | null;
+    voiceDuration?: number;
     deviceTimings?: Array<{ device: string; status: string; start: number; end?: number | null }>;
     deviceChange?: boolean;
     activityChange?: boolean;
@@ -57,9 +68,11 @@ export interface UserStalkerConfig {
     logPresenceChanges: boolean;
     logProfileChanges: boolean;
     logMessages: boolean;
+    logVoiceStates: boolean;
     notifyPresenceChanges: boolean;
     notifyProfileChanges: boolean;
     notifyMessages: boolean;
+    notifyVoiceStates: boolean;
     notifyTyping: boolean;
     typingConversationWindow?: number;
     serverFilterMode: "all" | "whitelist" | "blacklist";
@@ -74,5 +87,8 @@ export interface UserStalkerConfig {
     notifyBio?: boolean;
     notifyPronouns?: boolean;
     notifyGlobalName?: boolean;
+    notifyVoiceJoin?: boolean;
+    notifyVoiceLeave?: boolean;
+    notifyVoiceMove?: boolean;
 }
 

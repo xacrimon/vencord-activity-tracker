@@ -130,3 +130,43 @@ export function summarizeClientStatus(statusMap?: Record<string, string>) {
     return entries.map(([device, status]) => `${device}:${status}`).join(", ");
 }
 
+
+export function getVoiceActionLabel(action?: string | null) {
+    switch (action) {
+        case "join": return "Joined voice";
+        case "leave": return "Left voice";
+        case "move": return "Moved voice channel";
+        default: return "Voice update";
+    }
+}
+
+function formatVoiceLocation(channelName?: string | null, guildName?: string | null) {
+    const channel = channelName ? `#${channelName}` : "a voice channel";
+    return guildName ? `${channel} in ${guildName}` : channel;
+}
+
+/** Human readable "where the user went", e.g. `#General in My Server` or `#General → #AFK in My Server`. */
+export function describeVoiceTransition(entry: {
+    voiceAction?: string | null;
+    voiceChannelName?: string | null;
+    voiceOldChannelName?: string | null;
+    voiceOldGuildName?: string | null;
+    guildName?: string | null;
+}) {
+    const { voiceAction, voiceChannelName, voiceOldChannelName, voiceOldGuildName, guildName } = entry;
+
+    if (voiceAction === "leave") {
+        return formatVoiceLocation(voiceOldChannelName, voiceOldGuildName ?? guildName);
+    }
+
+    if (voiceAction === "move") {
+        const sameGuild = !voiceOldGuildName || voiceOldGuildName === guildName;
+        if (sameGuild) {
+            const from = voiceOldChannelName ? `#${voiceOldChannelName}` : "a voice channel";
+            return `${from} → ${formatVoiceLocation(voiceChannelName, guildName)}`;
+        }
+        return `${formatVoiceLocation(voiceOldChannelName, voiceOldGuildName)} → ${formatVoiceLocation(voiceChannelName, guildName)}`;
+    }
+
+    return formatVoiceLocation(voiceChannelName, guildName);
+}

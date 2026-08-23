@@ -177,6 +177,21 @@
     color: #000000 !important;
 }
 
+.stalker-status-badge--voice-join {
+    background: linear-gradient(135deg, #23a55a 0%, #1a8245 100%);
+    color: white !important;
+}
+
+.stalker-status-badge--voice-leave {
+    background: linear-gradient(135deg, #f23f43 0%, #c92c30 100%);
+    color: white !important;
+}
+
+.stalker-status-badge--voice-move {
+    background: linear-gradient(135deg, #eb7e34 0%, #c25f1c 100%);
+    color: white !important;
+}
+
 .stalker-status-badge--activity {
     background: linear-gradient(135deg, var(--background-modifier-accent) 0%, var(--background-tertiary) 100%);
     border-color: var(--background-modifier-accent);

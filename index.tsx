@@ -10,7 +10,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { fetchUserProfile } from "@utils/discord";
 import definePlugin from "@utils/types";
 import { findComponentByCodeLazy } from "@webpack";
-import { ChannelStore, GuildStore, Menu, PresenceStore, useEffect, UserProfileStore, UserStore,useState } from "@webpack/common";
+import { ChannelStore, GuildStore, Menu, PresenceStore, useEffect, UserProfileStore, UserStore,useState, VoiceStateStore } from "@webpack/common";
 
 import { openPresenceHistoryModal, StalkerIcon } from "./components";
 import { getWhitelistedIds, settings } from "./settings";
@@ -42,14 +42,18 @@ import {
     typingCooldowns,
     activeDeviceTimings,
     lastKnownClientStatuses,
+    lastKnownVoiceChannels,
+    voiceSessionStarts,
     updateDeviceTimings
 } from "./store";
-import { ProfileChanges, ProfileSnapshot } from "./types";
+import { ProfileChanges, ProfileSnapshot, UserStalkerConfig, VoiceAction } from "./types";
 import {
     addToWhitelist,
+    describeVoiceTransition,
     formatActivitySummary,
     getActivitySnapshots,
     getDurationLabel,
+    getVoiceActionLabel,
     isInWhitelist,
     logger,
     removeFromWhitelist,
@@ -90,8 +94,124 @@ function getClientStatusSnapshot(userId: string) {
 }
 
 
+function shouldTrackGuild(config: UserStalkerConfig, guildId?: string | null) {
+    if (!guildId) return false;
+    if (config.serverFilterMode === "whitelist") return config.serverList.includes(guildId);
+    if (config.serverFilterMode === "blacklist") return !config.serverList.includes(guildId);
+    return true;
+}
+
+function resolveVoiceChannel(channelId?: string | null) {
+    if (!channelId) return null;
+    const channel = ChannelStore.getChannel(channelId);
+    const guildId = channel?.guild_id ?? null;
+    // DM / group calls have no guild - this plugin only tracks servers you share with the user.
+    if (!guildId) return null;
+    return {
+        channelId,
+        channelName: channel?.name ?? null,
+        guildId,
+        guildName: GuildStore.getGuild(guildId)?.name ?? null
+    };
+}
+
+function primeVoiceChannel(userId: string) {
+    try {
+        const state = (VoiceStateStore as any)?.getVoiceStateForUser?.(userId);
+        lastKnownVoiceChannels.set(userId, state?.channelId ?? null);
+    } catch (e) {
+        logger.error(`Failed to prime voice state for ${userId}`, e);
+    }
+}
+
+function handleVoiceStateUpdate(userId: string, state: any) {
+    const newChannelId: string | null = state?.channelId ?? state?.channel_id ?? null;
+    // Prefer our own bookkeeping over the payload's oldChannelId: Discord re-dispatches voice
+    // states on mute/deafen toggles and when guilds are (re)loaded, and only a real channel
+    // change should produce an event.
+    const previousChannelId: string | null = lastKnownVoiceChannels.has(userId)
+        ? lastKnownVoiceChannels.get(userId)!
+        : (state?.oldChannelId ?? state?.old_channel_id ?? null);
+
+    if (previousChannelId === newChannelId) return;
+    lastKnownVoiceChannels.set(userId, newChannelId);
+
+    const from = resolveVoiceChannel(previousChannelId);
+    const to = resolveVoiceChannel(newChannelId);
+    if (!from && !to) return;
+
+    const now = Date.now();
+    const sessionStart = voiceSessionStarts.get(userId);
+    // Only guild voice sessions are timed, so a session that started in a DM call is not reported.
+    const voiceDuration = from && sessionStart ? now - sessionStart : undefined;
+    if (to) voiceSessionStarts.set(userId, now);
+    else voiceSessionStarts.delete(userId);
+
+    const action: VoiceAction = !from ? "join" : !to ? "leave" : "move";
+
+    const config = getUserConfig(userId);
+    // A move between two servers counts if either side is tracked.
+    if (!shouldTrackGuild(config, to?.guildId) && !shouldTrackGuild(config, from?.guildId)) return;
+    if (!config.logVoiceStates && !config.notifyVoiceStates) return;
+
+    const user = UserStore.getUser(userId);
+    const username = user?.username ?? lastKnownUsers.get(userId)?.username ?? "unknown";
+    const primary = to ?? from!;
+
+    const entry = {
+        userId,
+        username,
+        discriminator: user?.discriminator,
+        timestamp: now,
+        previousStatus: undefined,
+        currentStatus: PresenceStore.getStatus(userId) ?? null,
+        guildId: primary.guildId,
+        clientStatus: {},
+        activitySummary: `voice:${action}`,
+        clientStatusSummary: undefined,
+        guildName: primary.guildName,
+        type: "voice" as const,
+        channelId: primary.channelId,
+        channelName: primary.channelName ?? undefined,
+        voiceAction: action,
+        voiceChannelId: to?.channelId ?? null,
+        voiceChannelName: to?.channelName ?? null,
+        voiceOldChannelId: from?.channelId ?? null,
+        voiceOldChannelName: from?.channelName ?? null,
+        voiceOldGuildId: from?.guildId ?? null,
+        voiceOldGuildName: from?.guildName ?? null,
+        voiceDuration
+    };
+
+    if (config.logVoiceStates) addPresenceLog(entry);
+
+    const notifyForAction = action === "join"
+        ? config.notifyVoiceJoin !== false
+        : action === "leave"
+            ? config.notifyVoiceLeave !== false
+            : config.notifyVoiceMove !== false;
+
+    if (config.notifyVoiceStates && notifyForAction) {
+        try {
+            let body = describeVoiceTransition(entry);
+            const durationLabel = getDurationLabel(voiceDuration);
+            if (durationLabel) body += ` (after ${durationLabel})`;
+
+            const snapshot = lastKnownUsers.get(userId);
+            const avatar = snapshot?.avatar ?? user?.avatar ?? null;
+
+            showNotification({
+                title: `${username} ${getVoiceActionLabel(action).toLowerCase()}`,
+                body,
+                icon: avatar ? `https://cdn.discordapp.com/avatars/${userId}/${avatar}.png?size=64` : undefined
+            });
+        } catch (e) {  }
+    }
+}
+
 async function stalkUser(id: string) {
     addToWhitelist(id);
+    primeVoiceChannel(id);
     try {
         const u = UserStore.getUser(id);
         if (u) {
@@ -131,13 +251,15 @@ async function stalkUser(id: string) {
 function unStalkUser(id: string) {
     removeFromWhitelist(id);
     lastKnownUsers.delete(id);
+    lastKnownVoiceChannels.delete(id);
+    voiceSessionStarts.delete(id);
 }
 
 const Section = findComponentByCodeLazy("headingVariant:", ".section", ".header");
 
 export default definePlugin({
     name: "Activity Tracker",
-    description: "Advanced user presence and activity monitoring plugin that logs presence changes, profile updates, and status updates. Track when users change their status, monitor profile edits, view historical activity trends, and receive customizable notifications for selected users.",
+    description: "Advanced user presence and activity monitoring plugin that logs presence changes, profile updates, messages, voice channel activity, and status updates. Track when users change their status, join or leave voice channels, monitor profile edits, view historical activity trends, and receive customizable notifications for selected users.",
     authors: [{ id: 534759293065625620n, name: "Ondra_D" }],
     settings,
     patches: [
@@ -535,14 +657,7 @@ export default definePlugin({
 
                 const userConfig = getUserConfig(authorId);
 
-                const shouldProcess = (() => {
-                    if (userConfig.serverFilterMode === "all") return true;
-                    if (userConfig.serverFilterMode === "whitelist") return userConfig.serverList.includes(guildId);
-                    if (userConfig.serverFilterMode === "blacklist") return !userConfig.serverList.includes(guildId);
-                    return true;
-                })();
-
-                if (!shouldProcess) return;
+                if (!shouldTrackGuild(userConfig, guildId)) return;
                 if (!userConfig.logMessages) return;
 
                 let content = payload?.content ?? msg.content ?? "";
@@ -600,6 +715,22 @@ export default definePlugin({
             } catch (e) {
                 logger.error("Message listener error", e);
             }
+        },
+        VOICE_STATE_UPDATES({ voiceStates }: { voiceStates: any[]; }) {
+            try {
+                if (!Array.isArray(voiceStates) || !voiceStates.length) return;
+
+                const whitelisted = getWhitelistedIds();
+                if (!whitelisted.length) return;
+
+                for (const state of voiceStates) {
+                    const userId = state?.userId ?? state?.user_id;
+                    if (!userId || !whitelisted.includes(userId)) continue;
+                    handleVoiceStateUpdate(userId, state);
+                }
+            } catch (e) {
+                logger.error("Voice state listener error", e);
+            }
         }
     },
     addIconToToolBar(e: { toolbar: any; }) {
@@ -644,6 +775,10 @@ export default definePlugin({
             loadProfileSnapshots(),
             loadUserConfigs()
         ]);
+
+        // Baseline where tracked users already are, so a mute toggle or a guild (re)load right
+        // after start does not look like a fresh voice join.
+        for (const userId of getWhitelistedIds()) primeVoiceChannel(userId);
 
         this.presenceListener = async () => {
             try {
@@ -872,6 +1007,10 @@ export default definePlugin({
         pendingOnlineLogs.clear();
         pendingActivityLogs.forEach(p => clearTimeout(p.timeout));
         pendingActivityLogs.clear();
+
+        // Re-primed on the next start(); keeping them would produce bogus durations after a long stop.
+        lastKnownVoiceChannels.clear();
+        voiceSessionStarts.clear();
     }
 });
 

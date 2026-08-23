@@ -373,10 +373,13 @@ export function UserStalkerSettingsModal({ modalProps, userId, userStore }: { mo
                                 onNotifyChange={value => updateConfig("notifyMessages", value)}
                             />
 
-                            {(config.logMessages || config.notifyMessages) && (
+                            {(config.logMessages || config.notifyMessages || config.logVoiceStates || config.notifyVoiceStates) && (
                                 <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--background-modifier-accent)" }}>
                                     <Forms.FormText style={{ fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>
                                         Server Filtering
+                                    </Forms.FormText>
+                                    <Forms.FormText style={{ fontSize: "12px", opacity: 0.7, marginBottom: "6px" }}>
+                                        Applies to both message and voice activity.
                                     </Forms.FormText>
                                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "8px" }}>
                                         <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
@@ -446,6 +449,66 @@ export function UserStalkerSettingsModal({ modalProps, userId, userStore }: { mo
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ backgroundColor: "var(--background-secondary-alt)", borderRadius: "8px", padding: "12px", border: "1px solid var(--background-modifier-accent)" }}>
+                            <SettingRowWithNotification
+                                label="Log Voice Activity"
+                                note="Log when this user joins, leaves or switches voice channels in servers you share"
+                                logValue={config.logVoiceStates}
+                                notifyValue={config.notifyVoiceStates}
+                                onLogChange={value => updateConfig("logVoiceStates", value)}
+                                onNotifyChange={value => updateConfig("notifyVoiceStates", value)}
+                            />
+
+                            {config.notifyVoiceStates && (
+                                <div style={{
+                                    marginTop: "12px",
+                                    marginLeft: "8px",
+                                    paddingLeft: "16px",
+                                    borderLeft: "3px solid var(--brand-experiment)",
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(2, 1fr)",
+                                    gap: "6px"
+                                }}>
+                                    <Text variant="text-sm/semibold" style={{ gridColumn: "1 / -1", marginBottom: "4px" }}>
+                                        Notify on:
+                                    </Text>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={config.notifyVoiceJoin !== false}
+                                            onChange={e => updateConfig("notifyVoiceJoin", e.target.checked)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        <Text variant="text-sm/normal" style={{ cursor: "pointer" }} onClick={() => updateConfig("notifyVoiceJoin", !(config.notifyVoiceJoin !== false))}>
+                                            🔊 Joined voice
+                                        </Text>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={config.notifyVoiceLeave !== false}
+                                            onChange={e => updateConfig("notifyVoiceLeave", e.target.checked)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        <Text variant="text-sm/normal" style={{ cursor: "pointer" }} onClick={() => updateConfig("notifyVoiceLeave", !(config.notifyVoiceLeave !== false))}>
+                                            🔇 Left voice
+                                        </Text>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={config.notifyVoiceMove !== false}
+                                            onChange={e => updateConfig("notifyVoiceMove", e.target.checked)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        <Text variant="text-sm/normal" style={{ cursor: "pointer" }} onClick={() => updateConfig("notifyVoiceMove", !(config.notifyVoiceMove !== false))}>
+                                            ↔️ Switched channel
+                                        </Text>
+                                    </div>
                                 </div>
                             )}
                         </div>

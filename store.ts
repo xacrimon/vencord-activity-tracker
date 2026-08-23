@@ -7,7 +7,7 @@ import { PluginNative } from "@utils/types";
 
 import { getRetentionCutoffMs, getWhitelistedIds } from "./settings";
 import { PresenceLogEntry, ProfileSnapshot, UserStalkerConfig } from "./types";
-import { formatTimestamp, getDurationLabel, logger } from "./utils";
+import { describeVoiceTransition, formatTimestamp, getDurationLabel, getVoiceActionLabel, logger } from "./utils";
 
 export const isDesktop = typeof VencordNative !== "undefined" && !!VencordNative.pluginHelpers?.ActivityTracker;
 export const Native = isDesktop ? VencordNative.pluginHelpers.ActivityTracker as PluginNative<typeof import("./native")> : null;
@@ -73,6 +73,10 @@ export const lastKnownStatuses = new Map<string, string | null>();
 export const lastKnownActivities = new Map<string, any[]>();
 export const activeDeviceTimings = new Map<string, Array<{ device: string; status: string; start: number; end?: number | null }>>();
 export const lastKnownClientStatuses = new Map<string, Record<string, string>>();
+/** Last voice channel id we saw a tracked user in (null = not in voice). Used to ignore mute/deaf-only updates and state replays. */
+export const lastKnownVoiceChannels = new Map<string, string | null>();
+/** When the tracked user entered the channel they are currently sitting in, for voice session durations. */
+export const voiceSessionStarts = new Map<string, number>();
 
 export function updateDeviceTimings(userId: string, currentStatus: string | null, clientStatusMap: Record<string, string>, timestamp: number) {
     const isUserOffline = !currentStatus || ["offline", "invisible"].includes(currentStatus.toLowerCase());
@@ -150,9 +154,11 @@ const DEFAULT_USER_CONFIG: Omit<UserStalkerConfig, "userId"> = {
     logPresenceChanges: true,
     logProfileChanges: true,
     logMessages: true,
+    logVoiceStates: true,
     notifyPresenceChanges: false,
     notifyProfileChanges: true,
     notifyMessages: true,
+    notifyVoiceStates: true,
     notifyTyping: true,
     typingConversationWindow: 10,
     serverFilterMode: "all",
@@ -166,7 +172,10 @@ const DEFAULT_USER_CONFIG: Omit<UserStalkerConfig, "userId"> = {
     notifyBanner: true,
     notifyBio: true,
     notifyPronouns: true,
-    notifyGlobalName: true
+    notifyGlobalName: true,
+    notifyVoiceJoin: true,
+    notifyVoiceLeave: true,
+    notifyVoiceMove: true
 };
 export const presenceLogListeners = new Set<(logs: PresenceLogEntry[]) => void>();
 export let presenceLogs: PresenceLogEntry[] = [];
@@ -193,6 +202,8 @@ export function addPresenceLog(entry: PresenceLogEntry & { activitySummary?: str
     if (entry.onlineDuration) parts.push(`Online: ${getDurationLabel(entry.onlineDuration)}`);
     if (entry.activitySummary) parts.push(`Activity: ${entry.activitySummary}`);
     if (entry.clientStatusSummary) parts.push(`Clients: ${entry.clientStatusSummary}`);
+    if (entry.type === "voice") parts.push(`${getVoiceActionLabel(entry.voiceAction)}: ${describeVoiceTransition(entry)}`);
+    if (entry.voiceDuration) parts.push(`In voice: ${getDurationLabel(entry.voiceDuration)}`);
 
     logger.info(parts.join(" | "));
     appendUserLog(entry.userId, entry, cutoffMs).catch(e => logger.error("Failed to save log entry", e));

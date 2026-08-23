@@ -10,7 +10,7 @@ import { Forms, GuildStore, NavigationRouter, ScrollerThin, TabBar, Text, Toolti
 import { isDebugEnabled } from "../settings";
 import { clearProfileSnapshots, loadPresenceLogs, presenceLogListeners, presenceLogs, isDesktop, deleteUserLogs } from "../store";
 import { PresenceLogEntry } from "../types";
-import { formatTimestamp, getDurationLabel, getStatusClass, getStatusLabel, logger } from "../utils";
+import { describeVoiceTransition, formatTimestamp, getDurationLabel, getStatusClass, getStatusLabel, getVoiceActionLabel, logger } from "../utils";
 import { renderPresenceActivitySummary } from "./ActivityBadges";
 import { DeviceBadges } from "./Icons";
 import { renderProfileChangeBadges } from "./ProfileCard";
@@ -187,7 +187,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
 
     const forUser = (entry: PresenceLogEntry) => !filterUserId || entry.userId === filterUserId;
 
-    const presenceItems = logsForDay.filter(e => forUser(e) && (e as any).type !== "profile" && (e as any).type !== "message" && (e as any).type !== "typing" && (e.previousStatus !== undefined || e.currentStatus !== undefined || (e as any).deviceChange));
+    const presenceItems = logsForDay.filter(e => forUser(e) && (e as any).type !== "profile" && (e as any).type !== "message" && (e as any).type !== "typing" && (e as any).type !== "voice" && (e.previousStatus !== undefined || e.currentStatus !== undefined || (e as any).deviceChange));
     const basePresenceItems = presenceItems.filter(e => (e.previousStatus !== undefined && e.previousStatus !== e.currentStatus) || (e as any).deviceChange);
     const richActivityItems = presenceItems.filter(e => {
         const hasActivities = Array.isArray((e as any).activities) && (e as any).activities.length > 0;
@@ -195,7 +195,8 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
         return (e as any).activityChange === undefined || (e as any).activityChange === true;
     });
     const profileItems = logsForDay.filter(e => forUser(e) && ((e as any).type === "profile"));
-    const messageItems = logsForDay.filter(e => forUser(e) && (((e as any).type === "message") || (e.guildId && e.guildId !== "@me")));
+    const messageItems = logsForDay.filter(e => forUser(e) && (e as any).type !== "voice" && (((e as any).type === "message") || (e.guildId && e.guildId !== "@me")));
+    const voiceItems = logsForDay.filter(e => forUser(e) && (e as any).type === "voice");
 
     const filteredPresenceItems = useMemo(() => {
         if (platformFilter === "all") return basePresenceItems;
@@ -208,11 +209,12 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
         });
     }, [basePresenceItems, platformFilter]);
 
-    const sectionCounts = [basePresenceItems.length, profileItems.length, messageItems.length, richActivityItems.length];
+    const sectionCounts = [basePresenceItems.length, profileItems.length, messageItems.length, voiceItems.length, richActivityItems.length];
+    const totalChanges = sectionCounts.reduce((sum, count) => sum + count, 0);
 
     const subtitle = filterUserId
-        ? `${basePresenceItems.length + profileItems.length + messageItems.length + richActivityItems.length} changes for ${UserStore.getUser(filterUserId)?.username ?? filterUserId}`
-        : `${basePresenceItems.length + profileItems.length + messageItems.length + richActivityItems.length} stalked changes`;
+        ? `${totalChanges} changes for ${UserStore.getUser(filterUserId)?.username ?? filterUserId}`
+        : `${totalChanges} stalked changes`;
 
     const openLogs = async () => {
         if (!Native) return;
@@ -333,7 +335,8 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                     <TabBar.Item id={0}>Presence ({sectionCounts[0]})</TabBar.Item>
                     <TabBar.Item id={1}>Profile ({sectionCounts[1]})</TabBar.Item>
                     <TabBar.Item id={2}>Messages ({sectionCounts[2]})</TabBar.Item>
-                    <TabBar.Item id={3}>Rich ({sectionCounts[3]})</TabBar.Item>
+                    <TabBar.Item id={3}>Voice ({sectionCounts[3]})</TabBar.Item>
+                    <TabBar.Item id={4}>Rich ({sectionCounts[4]})</TabBar.Item>
                 </TabBar>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
@@ -478,6 +481,70 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                     )}
 
                     {selectedSection === 3 && (
+                        voiceItems.length ? (
+                            <ScrollerThin className="stalker-log-list">
+                                {voiceItems.map(entry => {
+                                    const action = entry.voiceAction ?? "join";
+                                    const guildId = action === "leave" ? (entry.voiceOldGuildId ?? entry.guildId) : entry.guildId;
+                                    const guild = guildId ? GuildStore.getGuild(guildId) : null;
+                                    const guildIcon = guild?.icon ? `https://cdn.discordapp.com/icons/${guildId}/${guild.icon}.png?size=32` : null;
+                                    const guildName = (action === "leave" ? entry.voiceOldGuildName : entry.guildName) ?? guild?.name ?? "Unknown Server";
+                                    const jumpChannelId = entry.voiceChannelId ?? entry.voiceOldChannelId;
+                                    const jumpLink = guildId && jumpChannelId ? `/channels/${guildId}/${jumpChannelId}` : null;
+                                    const durationLabel = getDurationLabel(entry.voiceDuration);
+
+                                    return (
+                                        <div key={`${entry.userId}-${entry.timestamp}-voice`} className="stalker-log-entry">
+                                            <div className="stalker-log-entry__header">
+                                                <div className="stalker-log-entry__identity">
+                                                    {(() => {
+                                                        const user = UserStore.getUser(entry.userId);
+                                                        const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
+                                                        return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
+                                                    })()}
+                                                    <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                </div>
+                                                <div className="stalker-log-entry__statuses">
+                                                    <span className={`stalker-status-badge stalker-status-badge--voice-${action}`}>
+                                                        {getVoiceActionLabel(action)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px", padding: "8px", backgroundColor: "var(--background-tertiary)", borderRadius: "4px" }}>
+                                                {guildIcon ? (
+                                                    <img src={guildIcon} alt="" style={{ width: "24px", height: "24px", borderRadius: "50%" }} />
+                                                ) : (
+                                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--background-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "var(--text-normal)" }}>
+                                                        {guildName.charAt(0)}
+                                                    </div>
+                                                )}
+                                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                                    <Text variant="text-sm/semibold">{guildName}</Text>
+                                                    <Text variant="text-xs/normal" color="header-secondary">{describeVoiceTransition(entry)}</Text>
+                                                </div>
+                                                {jumpLink && (
+                                                    <Button size="small" variant="primary" style={{ marginLeft: "auto" }} onClick={() => NavigationRouter.transitionTo(jumpLink)}>
+                                                        Jump
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            <div className="stalker-log-entry__meta">
+                                                <span>{formatTimestamp(entry.timestamp)}</span>
+                                                {durationLabel && <span>In voice {durationLabel}</span>}
+                                                {renderDeviceBadges(entry)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </ScrollerThin>
+                        ) : (
+                            <Forms.FormText>No voice activity recorded yet.</Forms.FormText>
+                        )
+                    )}
+
+                    {selectedSection === 4 && (
                         richActivityItems.length ? (
                             <ScrollerThin className="stalker-log-list">
                                 {richActivityItems.map(entry => (
