@@ -433,6 +433,9 @@ export async function loadPresenceLogs() {
 
         for (const userId of userIds) {
             try {
+                // Prune on load as well as on append, so users who have gone quiet still get old
+                // entries dropped rather than keeping them forever.
+                if (Native && cutoffMs) await Native.compactLogs(userId, cutoffMs);
                 const userLogs = await readUserLogs(userId, cutoffMs);
                 allLogs.push(...userLogs);
             } catch (e) {
