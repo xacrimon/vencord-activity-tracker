@@ -9,8 +9,8 @@ import { getRetentionCutoffMs, getWhitelistedIds } from "./settings";
 import { PresenceLogEntry, ProfileSnapshot, UserStalkerConfig } from "./types";
 import { describeVoiceTransition, formatTimestamp, getDurationLabel, getVoiceActionLabel, logger } from "./utils";
 
-export const isDesktop = typeof VencordNative !== "undefined" && !!VencordNative.pluginHelpers?.ActivityTracker;
-export const Native = isDesktop ? VencordNative.pluginHelpers.ActivityTracker as PluginNative<typeof import("./native")> : null;
+export const isDesktop = typeof VencordNative !== "undefined" && !!VencordNative.pluginHelpers?.["Activity Tracker"];
+export const Native = isDesktop ? VencordNative.pluginHelpers["Activity Tracker"] as PluginNative<typeof import("./native")> : null;
 
 export async function readUserLogs(userId: string, cutoffMs?: number): Promise<PresenceLogEntry[]> {
     if (Native) {

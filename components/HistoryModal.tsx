@@ -17,7 +17,7 @@ import { renderProfileChangeBadges } from "./ProfileCard";
 import { openSnapshotsModal } from "./SnapshotsModal";
 import { openUserStalkerSettings } from "./UserSettings";
 
-const Native = isDesktop ? VencordNative.pluginHelpers.ActivityTracker as PluginNative<typeof import("../native")> : null;
+const Native = isDesktop ? VencordNative.pluginHelpers["Activity Tracker"] as PluginNative<typeof import("../native")> : null;
 
 const cl = classNameFactory("stalker-modal-");
 
