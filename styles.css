@@ -493,7 +493,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--header-secondary);
+    color: var(--text-muted);
     background: var(--background-tertiary);
     text-align: center;
     border-bottom: 1px solid var(--background-modifier-accent);
@@ -627,7 +627,7 @@
 .stalker-profile-card__section-title {
     font-size: 12px;
     font-weight: 700;
-    color: var(--header-secondary);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -681,7 +681,7 @@
 .stalker-profile-card__note-title {
     font-size: 12px;
     font-weight: 700;
-    color: var(--header-secondary);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }

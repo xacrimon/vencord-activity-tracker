@@ -457,7 +457,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                 )}
                                                 <div style={{ display: "flex", flexDirection: "column" }}>
                                                     <Text size="sm" weight="semibold">{entry.guildName ?? "Unknown Server"}</Text>
-                                                    {channelName && <Text size="xs" weight="normal" style={{ color: "var(--header-secondary)" }}>#{channelName}</Text>}
+                                                    {channelName && <Text size="xs" weight="normal" style={{ color: "var(--text-muted)" }}>#{channelName}</Text>}
                                                 </div>
                                                 {jumpLink && (
                                                     <Button size="small" variant="primary" style={{ marginLeft: "auto" }} onClick={() => NavigationRouter.transitionTo(jumpLink)}>
@@ -523,7 +523,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                 )}
                                                 <div style={{ display: "flex", flexDirection: "column" }}>
                                                     <Text size="sm" weight="semibold">{guildName}</Text>
-                                                    <Text size="xs" weight="normal" style={{ color: "var(--header-secondary)" }}>{describeVoiceTransition(entry)}</Text>
+                                                    <Text size="xs" weight="normal" style={{ color: "var(--text-muted)" }}>{describeVoiceTransition(entry)}</Text>
                                                 </div>
                                                 {jumpLink && (
                                                     <Button size="small" variant="primary" style={{ marginLeft: "auto" }} onClick={() => NavigationRouter.transitionTo(jumpLink)}>
