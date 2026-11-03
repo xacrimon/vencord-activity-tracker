@@ -3,9 +3,11 @@
 
 import { classNameFactory } from "@api/Styles";
 import { Button } from "@components/Button";
+import { Paragraph } from "@components/Paragraph";
+import { Text } from "@components/Text";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import { PluginNative } from "@utils/types";
-import { Forms, GuildStore, NavigationRouter, ScrollerThin, TabBar, Text, Tooltip, useEffect, useMemo, UserStore,useState } from "@webpack/common";
+import { GuildStore, NavigationRouter, ScrollerThin, TabBar, Tooltip, useEffect, useMemo, UserStore, useState } from "@webpack/common";
 
 import { isDebugEnabled } from "../settings";
 import { clearProfileSnapshots, loadPresenceLogs, presenceLogListeners, presenceLogs, isDesktop, deleteUserLogs } from "../store";
@@ -82,11 +84,11 @@ function ConfirmDeleteModal({ modalProps, onConfirm }: { modalProps: ModalProps;
     return (
         <ModalRoot {...modalProps} size={ModalSize.SMALL}>
             <ModalHeader>
-                <Text variant="heading-lg/semibold">Delete Logs?</Text>
+                <Text size="lg" weight="semibold">Delete Logs?</Text>
                 <ModalCloseButton onClick={modalProps.onClose} />
             </ModalHeader>
             <ModalContent>
-                <Text variant="text-md/normal">
+                <Text size="md" weight="normal">
                     Are you sure you want to delete all logs for this user? This action cannot be undone.
                 </Text>
             </ModalContent>
@@ -115,11 +117,11 @@ function ConfirmClearSnapshotsModal({ modalProps, onConfirm }: { modalProps: Mod
     return (
         <ModalRoot {...modalProps} size={ModalSize.SMALL}>
             <ModalHeader>
-                <Text variant="heading-lg/semibold">Clear All Snapshots?</Text>
+                <Text size="lg" weight="semibold">Clear All Snapshots?</Text>
                 <ModalCloseButton onClick={modalProps.onClose} />
             </ModalHeader>
             <ModalContent>
-                <Text variant="text-md/normal">
+                <Text size="md" weight="normal">
                     Are you sure you want to delete ALL profile snapshots?
                     This will reset change detection for all users. The next time you view them, a new baseline snapshot will be created.
                 </Text>
@@ -283,7 +285,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
     return (
         <ModalRoot {...modalProps} size={ModalSize.LARGE} className={cl("root") + " stalker-modal-root"}>
             <ModalHeader className={cl("head")}>
-                <Text variant="heading-lg/semibold" style={{ flexGrow: 1 }}>Discord Activity Tracker History</Text>
+                <Text size="lg" weight="semibold" style={{ flexGrow: 1 }}>Discord Activity Tracker History</Text>
                 {filterUserId && (
                     <Tooltip text="User Settings">
                         {tooltipProps => (
@@ -316,7 +318,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
             <ModalContent className={cl("contents") + " stalker-modal-contents"}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <Forms.FormText>{subtitle}</Forms.FormText>
+                        <Paragraph>{subtitle}</Paragraph>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                         {isDesktop && <Button onClick={openLogs}>Open Logs</Button>}
@@ -341,7 +343,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
                     <Button size="small" variant="secondary" onClick={showPrevDay}>Previous day</Button>
-                    <Text variant="text-sm/semibold" style={{ flexGrow: 1, textAlign: "center" }}>{dayLabel}</Text>
+                    <Text size="sm" weight="semibold" style={{ flexGrow: 1, textAlign: "center" }}>{dayLabel}</Text>
                     <Button size="small" variant="secondary" onClick={showNextDay} disabled={isToday}>Next day</Button>
                 </div>
 
@@ -371,7 +373,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                         const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
                                                         return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
                                                     })()}
-                                                    <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                    <Text size="md" weight="semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
                                                 </div>
                                                 {renderPresenceStatuses(entry)}
                                             </div>
@@ -385,7 +387,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                     ))}
                                 </ScrollerThin>
                             ) : (
-                                <Forms.FormText>No presence updates recorded yet.</Forms.FormText>
+                                <Paragraph>No presence updates recorded yet.</Paragraph>
                             )}
                         </>
                     )}
@@ -402,7 +404,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                     const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
                                                     return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
                                                 })()}
-                                                <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                <Text size="md" weight="semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
                                             </div>
                                             <div className="stalker-log-entry__statuses">
                                                 {renderProfileChangeBadges(entry)}
@@ -416,7 +418,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                 ))}
                             </ScrollerThin>
                         ) : (
-                            <Forms.FormText>No profile updates recorded yet.</Forms.FormText>
+                            <Paragraph>No profile updates recorded yet.</Paragraph>
                         )
                     )}
 
@@ -438,7 +440,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                         const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
                                                         return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
                                                     })()}
-                                                    <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                    <Text size="md" weight="semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
                                                 </div>
                                                 <div className="stalker-log-entry__meta">
                                                     <span>{formatTimestamp(entry.timestamp)}</span>
@@ -454,8 +456,8 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                     </div>
                                                 )}
                                                 <div style={{ display: "flex", flexDirection: "column" }}>
-                                                    <Text variant="text-sm/semibold">{entry.guildName ?? "Unknown Server"}</Text>
-                                                    {channelName && <Text variant="text-xs/normal" color="header-secondary">#{channelName}</Text>}
+                                                    <Text size="sm" weight="semibold">{entry.guildName ?? "Unknown Server"}</Text>
+                                                    {channelName && <Text size="xs" weight="normal" style={{ color: "var(--header-secondary)" }}>#{channelName}</Text>}
                                                 </div>
                                                 {jumpLink && (
                                                     <Button size="small" variant="primary" style={{ marginLeft: "auto" }} onClick={() => NavigationRouter.transitionTo(jumpLink)}>
@@ -466,7 +468,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
 
                                             {(entry as any).messageContent && (
                                                 <div style={{ marginTop: "8px", padding: "8px", backgroundColor: "var(--background-secondary-alt)", borderRadius: "4px", borderLeft: "4px solid var(--brand-experiment)" }}>
-                                                    <Text variant="text-md/normal" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                                    <Text size="md" weight="normal" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                                                         {(entry as any).messageContent}
                                                     </Text>
                                                 </div>
@@ -476,7 +478,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                 })}
                             </ScrollerThin>
                         ) : (
-                            <Forms.FormText>No messages recorded yet.</Forms.FormText>
+                            <Paragraph>No messages recorded yet.</Paragraph>
                         )
                     )}
 
@@ -502,7 +504,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                         const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
                                                         return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
                                                     })()}
-                                                    <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                    <Text size="md" weight="semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
                                                 </div>
                                                 <div className="stalker-log-entry__statuses">
                                                     <span className={`stalker-status-badge stalker-status-badge--voice-${action}`}>
@@ -520,8 +522,8 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                     </div>
                                                 )}
                                                 <div style={{ display: "flex", flexDirection: "column" }}>
-                                                    <Text variant="text-sm/semibold">{guildName}</Text>
-                                                    <Text variant="text-xs/normal" color="header-secondary">{describeVoiceTransition(entry)}</Text>
+                                                    <Text size="sm" weight="semibold">{guildName}</Text>
+                                                    <Text size="xs" weight="normal" style={{ color: "var(--header-secondary)" }}>{describeVoiceTransition(entry)}</Text>
                                                 </div>
                                                 {jumpLink && (
                                                     <Button size="small" variant="primary" style={{ marginLeft: "auto" }} onClick={() => NavigationRouter.transitionTo(jumpLink)}>
@@ -540,7 +542,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                 })}
                             </ScrollerThin>
                         ) : (
-                            <Forms.FormText>No voice activity recorded yet.</Forms.FormText>
+                            <Paragraph>No voice activity recorded yet.</Paragraph>
                         )
                     )}
 
@@ -556,7 +558,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                                     const avatarUrl = user?.avatar ? `https://cdn.discordapp.com/avatars/${entry.userId}/${user.avatar}.png?size=64` : null;
                                                     return avatarUrl ? <img src={avatarUrl} alt="" className="stalker-log-entry__avatar" /> : <div className="stalker-log-entry__avatar stalker-log-entry__avatar--fallback">{entry.username?.charAt(0)?.toUpperCase() ?? "?"}</div>;
                                                 })()}
-                                                <Text variant="text-md/semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
+                                                <Text size="md" weight="semibold" className="stalker-log-entry__header-name">{entry.username}</Text>
                                             </div>
                                                 {renderPresenceStatuses(entry)}
                                         </div>
@@ -569,7 +571,7 @@ export function PresenceHistoryPanel({ modalProps, initialUserId }: { modalProps
                                 ))}
                             </ScrollerThin>
                         ) : (
-                            <Forms.FormText>No rich presence updates recorded yet.</Forms.FormText>
+                            <Paragraph>No rich presence updates recorded yet.</Paragraph>
                         )
                     )}
                 </div>
